@@ -23,6 +23,16 @@ export function normalizeParamsForSettings(
     n: Math.min(outputImageLimit, Math.max(1, params.n || DEFAULT_PARAMS.n)),
   }
 
+  if (activeProfile.provider === 'novelai2oai' || activeProfile.provider === 'novelai') {
+    const match = nextParams.size.match(/^(\d+)[x:](\d+)$/)
+    nextParams.novelai_width = match ? Number(match[1]) : DEFAULT_PARAMS.novelai_width
+    nextParams.novelai_height = match ? Number(match[2]) : DEFAULT_PARAMS.novelai_height
+  }
+
+  if (activeProfile.provider === 'novelai' && nextParams.output_format === 'jpeg') {
+    nextParams.output_format = 'png'
+  }
+
   if (isOpenAICompatibleProvider(settings, activeProfile.provider) && activeProfile.codexCli) {
     nextParams.size = normalizeCodexCliImageSize(nextParams.size)
     nextParams.quality = DEFAULT_PARAMS.quality

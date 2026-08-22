@@ -459,12 +459,14 @@ export default function InputBar() {
   }, [setPrompt])
   const activeProvider = activeProfile.provider
   const isFalProvider = activeProvider === 'fal'
+  const isNovelaiProvider = activeProvider === 'novelai2oai'
+  const isOfficialNovelaiProvider = activeProvider === 'novelai'
   const agentAutoImageCount = appMode === 'agent'
-  const moderationDisabled = isFalProvider
+  const moderationDisabled = isFalProvider || isOfficialNovelaiProvider
   const transparentOutputAvailable = appMode === 'gallery'
   const showTransparentOutputControl = transparentOutputAvailable && (params.output_format === 'png' || params.output_format === 'webp')
   const transparentOutputEnabled = transparentOutputAvailable && showTransparentOutputControl && params.transparent_output
-  const compressionDisabled = params.output_format === 'png' || isFalProvider
+  const compressionDisabled = params.output_format === 'png' || isFalProvider || isOfficialNovelaiProvider
   const outputImageLimit = getOutputImageLimitForSettings(effectiveSettings)
   const isFalTextToImage = isFalProvider && inputImages.length === 0
   const nDraftValue = Number(nInput)
@@ -1514,7 +1516,9 @@ export default function InputBar() {
       params={params}
       setParams={setParams}
       activeProfile={activeProfile}
-      isFalProvider={isFalProvider}
+       isFalProvider={isFalProvider}
+       isNovelaiProvider={isNovelaiProvider}
+       isOfficialNovelaiProvider={isOfficialNovelaiProvider}
       isFalTextToImage={isFalTextToImage}
       displaySize={displaySize}
       qualityOptions={qualityOptions}

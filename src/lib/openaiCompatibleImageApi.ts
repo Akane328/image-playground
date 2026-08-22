@@ -687,6 +687,13 @@ function createCustomProviderContext(opts: CallApiOptions, profile: ApiProfile) 
     : sizePrompt
   const params = {
     ...opts.params,
+    ...(profile.provider === 'novelai2oai'
+      ? {
+          novelai_width: opts.params.novelai_width,
+          novelai_height: opts.params.novelai_height,
+          novelai_size: `${opts.params.novelai_width}:${opts.params.novelai_height}`,
+        }
+      : {}),
     ...(profile.codexCli ? { size: undefined, quality: undefined } : {}),
     ...(opts.nativeTransparentBackground ? { background: 'transparent' } : {}),
   }
@@ -703,6 +710,14 @@ function createCustomProviderContext(opts: CallApiOptions, profile: ApiProfile) 
       dataUrl: opts.maskDataUrl,
     },
   }
+}
+
+function extractImageUrls(value: string): string[] {
+  const matches = value.match(/(?:!\[[^\]]*\]\()?((?:https?:\/\/|data:image\/)[^\s)]+)(?:\))?/gi)
+  return matches?.map((item) => {
+    const markdownMatch = item.match(/\((https?:\/\/|data:image\/)[^\s)]+\)/i)
+    return markdownMatch ? markdownMatch[0].slice(1, -1) : item
+  }) ?? []
 }
 
 function renderQuery(query: Record<string, string> | undefined, context: Record<string, unknown>): Record<string, string> | undefined {
@@ -763,7 +778,7 @@ async function createCustomMultipartBody(mapping: CustomProviderSubmitMapping, o
 async function extractCustomImages(payload: unknown, result: CustomProviderResultMapping, mime: string, signal?: AbortSignal): Promise<CallApiResult> {
   const images: string[] = []
   const imageUrls = (result.imageUrlPaths ?? []).flatMap((path) =>
-    getAllByPath(payload, path).filter((value): value is string => isHttpUrl(value) || isDataUrl(value)),
+    getAllByPath(payload, path).flatMap((value) => typeof value === 'string' ? extractImageUrls(value) : []),
   )
   const rawImageUrls = imageUrls.filter(isHttpUrl)
   try {
@@ -812,7 +827,28 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
           (opts.maskDataUrl ? getDataUrlEncodedByteSize(opts.maskDataUrl) : 0),
       )
       headers['Content-Type'] = 'application/json'
-      const resolved = resolveTemplateValue(mapping.body ?? {}, context)
+      const resolved = profile.provider === 'novelai'
+        ? {
+            action: 'generate',
+            input: opts.prompt,
+            model: profile.model,
+            parameters: {
+              negative_prompt: opts.params.novelai_negative_prompt,
+              width: opts.params.novelai_width,
+              height: opts.params.novelai_height,
+              steps: opts.params.novelai_steps,
+              scale: opts.params.novelai_cfg,
+              sampler: opts.params.novelai_sampler,
+              ...(opts.params.novelai_seed == null ? {} : { seed: opts.params.novelai_seed }),
+              n_samples: opts.params.n,
+              image_format: opts.params.output_format === 'webp' ? 'webp' : 'png',
+              qualityToggle: opts.params.novelai_quality_toggle,
+              ucPreset: opts.params.novelai_uc_preset,
+              cfg_rescale: opts.params.novelai_cfg_rescale,
+            },
+          }
+        : resolveTemplateValue(mapping.body ?? {}, context)
+      if (profile.provider === 'novelai') headers.Accept = 'application/json'
       if (profile.responseFormatB64Json && resolved && typeof resolved === 'object' && !Array.isArray(resolved)) {
         (resolved as Record<string, unknown>).response_format = 'b64_json'
       }

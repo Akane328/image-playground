@@ -15,7 +15,7 @@ export const ZIP_DOWNLOAD_ROUTE_VALUES = [
 ] as const
 export type ZipDownloadRoute = typeof ZIP_DOWNLOAD_ROUTE_VALUES[number]
 export const DEFAULT_ZIP_DOWNLOAD_ROUTES: ZipDownloadRoute[] = ['task-selection', 'favorite-collection-selection']
-export type BuiltInApiProvider = 'openai' | 'sb2api-async' | 'fal'
+export type BuiltInApiProvider = 'openai' | 'sb2api-async' | 'fal' | 'novelai2oai' | 'novelai'
 export type ApiProvider = BuiltInApiProvider | string
 export type CustomProviderTemplate = 'http-image'
 export const DEFAULT_STREAM_PARTIAL_IMAGES = 1
@@ -133,6 +133,16 @@ export interface TaskParams {
   moderation: 'auto' | 'low'
   n: number
   transparent_output: boolean
+  novelai_negative_prompt: string
+  novelai_sampler: string
+  novelai_steps: number
+  novelai_cfg: number
+  novelai_width: number
+  novelai_height: number
+  novelai_seed: number | null
+  novelai_uc_preset: number
+  novelai_cfg_rescale: number
+  novelai_quality_toggle: boolean
 }
 
 export const DEFAULT_PARAMS: TaskParams = {
@@ -143,6 +153,16 @@ export const DEFAULT_PARAMS: TaskParams = {
   moderation: 'auto',
   n: 1,
   transparent_output: false,
+  novelai_negative_prompt: '',
+  novelai_sampler: 'k_euler_ancestral',
+  novelai_steps: 28,
+  novelai_cfg: 5,
+  novelai_width: 1216,
+  novelai_height: 832,
+  novelai_seed: null,
+  novelai_uc_preset: 0,
+  novelai_cfg_rescale: 0,
+  novelai_quality_toggle: true,
 }
 
 // ===== 输入图片（UI 层面） =====

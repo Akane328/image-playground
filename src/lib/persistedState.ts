@@ -84,6 +84,16 @@ function normalizeParams(value: unknown, fallback: TaskParams): TaskParams {
     moderation: value.moderation === 'auto' || value.moderation === 'low' ? value.moderation : fallback.moderation,
     n: typeof value.n === 'number' && Number.isFinite(value.n) ? value.n : fallback.n,
     transparent_output: typeof value.transparent_output === 'boolean' ? value.transparent_output : fallback.transparent_output,
+    novelai_negative_prompt: typeof value.novelai_negative_prompt === 'string' ? value.novelai_negative_prompt : fallback.novelai_negative_prompt,
+    novelai_sampler: typeof value.novelai_sampler === 'string' ? value.novelai_sampler : fallback.novelai_sampler,
+    novelai_steps: typeof value.novelai_steps === 'number' && Number.isFinite(value.novelai_steps) ? value.novelai_steps : fallback.novelai_steps,
+    novelai_cfg: typeof value.novelai_cfg === 'number' && Number.isFinite(value.novelai_cfg) ? value.novelai_cfg : fallback.novelai_cfg,
+    novelai_width: typeof value.novelai_width === 'number' && Number.isFinite(value.novelai_width) ? value.novelai_width : fallback.novelai_width,
+    novelai_height: typeof value.novelai_height === 'number' && Number.isFinite(value.novelai_height) ? value.novelai_height : fallback.novelai_height,
+    novelai_seed: value.novelai_seed === null || (typeof value.novelai_seed === 'number' && Number.isInteger(value.novelai_seed)) ? value.novelai_seed : fallback.novelai_seed,
+    novelai_uc_preset: typeof value.novelai_uc_preset === 'number' && Number.isInteger(value.novelai_uc_preset) ? value.novelai_uc_preset : fallback.novelai_uc_preset,
+    novelai_cfg_rescale: typeof value.novelai_cfg_rescale === 'number' && Number.isFinite(value.novelai_cfg_rescale) ? value.novelai_cfg_rescale : fallback.novelai_cfg_rescale,
+    novelai_quality_toggle: typeof value.novelai_quality_toggle === 'boolean' ? value.novelai_quality_toggle : fallback.novelai_quality_toggle,
   }
 }
 

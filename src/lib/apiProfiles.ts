@@ -32,10 +32,12 @@ export const DEFAULT_IMAGES_MODEL = 'gpt-image-2'
 export const DEFAULT_RESPONSES_MODEL = 'gpt-5.6-sol'
 export const DEFAULT_FAL_BASE_URL = 'https://fal.run'
 export const DEFAULT_FAL_MODEL = 'openai/gpt-image-2'
+export const DEFAULT_NOVELAI_BASE_URL = 'https://image.novelai.net'
+export const DEFAULT_NOVELAI_MODEL = 'nai-diffusion-3'
 export const DEFAULT_OPENAI_PROFILE_ID = 'default-openai'
 export const DEFAULT_API_TIMEOUT = 600
 
-const BUILT_IN_PROVIDER_IDS = new Set<ApiProvider>(['openai', 'sb2api-async', 'fal'])
+const BUILT_IN_PROVIDER_IDS = new Set<ApiProvider>(['openai', 'sb2api-async', 'fal', 'novelai2oai', 'novelai'])
 const DEFAULT_CUSTOM_PROVIDER_PATHS = {
   generationPath: 'images/generations',
   editPath: 'images/edits',
@@ -57,6 +59,44 @@ const DEFAULT_OPENAI_RESULT: CustomProviderResultMapping = {
   imageUrlPaths: ['data.*.url'],
   b64JsonPaths: ['data.*.b64_json'],
 }
+
+const NOVELAI2OAI_PROVIDER: CustomProviderDefinition = {
+  id: 'novelai2oai',
+  name: 'NovelAI2OAI',
+  template: 'http-image',
+  submit: {
+    path: 'chat/completions',
+    method: 'POST',
+    contentType: 'json',
+    body: {
+      model: '$profile.model',
+      messages: [{ role: 'user', content: '$prompt' }],
+      size: '$params.novelai_size',
+      negative_prompt: '$params.novelai_negative_prompt',
+      sampler: '$params.novelai_sampler',
+      steps: '$params.novelai_steps',
+      cfg: '$params.novelai_cfg',
+    },
+    result: {
+      imageUrlPaths: ['choices.0.message.content'],
+    },
+  },
+}
+
+const NOVELAI_PROVIDER: CustomProviderDefinition = {
+  id: 'novelai',
+  name: 'NovelAI',
+  template: 'http-image',
+  submit: {
+    path: 'ai/generate-image',
+    method: 'POST',
+    contentType: 'json',
+    body: {},
+    result: { b64JsonPaths: ['images.*.image'] },
+  },
+}
+
+const BUILT_IN_CUSTOM_PROVIDERS = [NOVELAI2OAI_PROVIDER, NOVELAI_PROVIDER]
 const DEFAULT_EDIT_FILES: CustomProviderFileMapping[] = [
   { field: 'image[]', source: 'inputImages', array: true },
   { field: 'mask', source: 'mask' },
@@ -133,7 +173,9 @@ function normalizeProviderOrder(value: unknown, customProviders: CustomProviderD
   if (!Array.isArray(value)) return undefined
 
   const providerIds = ['openai', 'sb2api-async', 'fal', ...customProviders.map((provider) => provider.id)]
+  const optionalBuiltInProviderIds = ['novelai2oai', 'novelai']
   const knownIds = new Set(providerIds)
+  for (const providerId of optionalBuiltInProviderIds) knownIds.add(providerId)
   const ordered = value
     .map(String)
     .filter((id, idx, list) => knownIds.has(id) && list.indexOf(id) === idx)
@@ -395,6 +437,10 @@ export function createDefaultFalProfile(overrides: Partial<ApiProfile> = {}): Ap
   }
 }
 
+export function getBuiltInCustomProvider(provider: ApiProvider): CustomProviderDefinition | null {
+  return BUILT_IN_CUSTOM_PROVIDERS.find((item) => item.id === provider) ?? null
+}
+
 export function switchApiProfileProvider(profile: ApiProfile, provider: ApiProvider, customProvider?: CustomProviderDefinition): ApiProfile {
   const providerDrafts = {
     ...profile.providerDrafts,
@@ -437,8 +483,8 @@ export function switchApiProfileProvider(profile: ApiProfile, provider: ApiProvi
     return {
       ...profile,
       provider: customProvider.id,
-      baseUrl: savedDraft?.baseUrl ?? (shouldUseOpenAIDefaults ? DEFAULT_BASE_URL : profile.baseUrl || DEFAULT_BASE_URL),
-      model: savedDraft?.model ?? (shouldUseOpenAIDefaults ? DEFAULT_IMAGES_MODEL : profile.model || DEFAULT_IMAGES_MODEL),
+       baseUrl: savedDraft?.baseUrl ?? (customProvider.id === 'novelai' ? DEFAULT_NOVELAI_BASE_URL : shouldUseOpenAIDefaults ? DEFAULT_BASE_URL : profile.baseUrl || DEFAULT_BASE_URL),
+       model: savedDraft?.model ?? (customProvider.id === 'novelai' ? DEFAULT_NOVELAI_MODEL : shouldUseOpenAIDefaults ? DEFAULT_IMAGES_MODEL : profile.model || DEFAULT_IMAGES_MODEL),
       apiMode: 'images',
       reasoningEffort: savedDraft?.reasoningEffort,
       codexCli: savedDraft?.codexCli ?? false,
@@ -540,6 +586,8 @@ export function normalizeApiProfile(
     : fallback
   const defaults = provider === 'fal'
     ? createDefaultFalProfile(providerFallback)
+    : provider === 'novelai'
+    ? createDefaultOpenAIProfile({ ...providerFallback, baseUrl: DEFAULT_NOVELAI_BASE_URL, model: DEFAULT_NOVELAI_MODEL })
     : createDefaultOpenAIProfile({ ...providerFallback, apiMode })
   const rawBaseUrl = typeof record.baseUrl === 'string' ? record.baseUrl : defaults.baseUrl
   const streamImages = provider === 'openai'
@@ -554,7 +602,7 @@ export function normalizeApiProfile(
     name: typeof record.name === 'string' && record.name.trim() ? record.name : defaults.name,
     description: typeof record.description === 'string' && record.description.trim() ? record.description : undefined,
     provider,
-    baseUrl: provider === 'fal' ? rawBaseUrl.trim().replace(/\/+$/, '') : rawBaseUrl,
+    baseUrl: provider === 'fal' || provider === 'novelai2oai' ? rawBaseUrl.trim().replace(/\/+$/, '') : provider === 'novelai' ? `${rawBaseUrl.trim().replace(/\/+$/, '') || DEFAULT_NOVELAI_BASE_URL}/` : rawBaseUrl,
     apiKey: typeof record.apiKey === 'string' ? record.apiKey : defaults.apiKey,
     model: typeof record.model === 'string' && record.model.trim() ? record.model : defaults.model,
     timeout: typeof record.timeout === 'number' && Number.isFinite(record.timeout) ? record.timeout : defaults.timeout,
@@ -737,6 +785,8 @@ export function getAgentImageApiProfile(settings: Partial<AppSettings> | unknown
 
 export function getCustomProviderDefinition(settings: Partial<AppSettings> | unknown, provider: ApiProvider): CustomProviderDefinition | null {
   if (provider === 'sb2api-async') return SUB2API_PROVIDER
+  if (provider === 'novelai2oai') return NOVELAI2OAI_PROVIDER
+  if (provider === 'novelai') return NOVELAI_PROVIDER
   const normalized = normalizeSettings(settings)
   return normalized.customProviders.find((item) => item.id === provider) ?? null
 }
@@ -745,6 +795,8 @@ export function getApiProviderLabel(settings: Partial<AppSettings> | unknown, pr
   if (provider === 'fal') return 'fal.ai'
   if (provider === 'openai') return 'OpenAI'
   if (provider === 'sb2api-async') return SUB2API_PROVIDER.name
+  if (provider === 'novelai2oai') return NOVELAI2OAI_PROVIDER.name
+  if (provider === 'novelai') return NOVELAI_PROVIDER.name
   return getCustomProviderDefinition(settings, provider)?.name ?? provider
 }
 

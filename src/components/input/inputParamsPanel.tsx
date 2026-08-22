@@ -17,6 +17,8 @@ export default function InputParamsPanel({
   setParams,
   activeProfile,
   isFalProvider,
+  isNovelaiProvider,
+  isOfficialNovelaiProvider,
   isFalTextToImage,
   displaySize,
   qualityOptions,
@@ -57,6 +59,8 @@ export default function InputParamsPanel({
   setParams: (patch: Partial<TaskParams>) => void
   activeProfile: ApiProfile
   isFalProvider: boolean
+  isNovelaiProvider: boolean
+  isOfficialNovelaiProvider: boolean
   isFalTextToImage: boolean
   displaySize: string
   qualityOptions: Array<{ label: string; value: string }>
@@ -118,6 +122,112 @@ export default function InputParamsPanel({
             : 'Codex CLI 不支持尺寸参数，此处设置仅基于提示词工程'}
         />
       </label>
+      {(isNovelaiProvider || isOfficialNovelaiProvider) && (
+        <label className="col-span-full flex flex-col gap-0.5">
+          <span className="text-gray-400 dark:text-gray-500 ml-1">负面提示词</span>
+          <textarea
+            value={params.novelai_negative_prompt}
+            onChange={(e) => setParams({ novelai_negative_prompt: e.target.value })}
+            rows={2}
+            placeholder="输入不希望出现的内容，例如 low quality, blurry"
+            className="min-h-16 resize-y px-3 py-2 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+          />
+        </label>
+      )}
+      {(isNovelaiProvider || isOfficialNovelaiProvider) && (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">采样器</span>
+            <Select
+              value={params.novelai_sampler}
+              onChange={(val) => setParams({ novelai_sampler: val })}
+              options={[
+                { label: 'Euler Ancestral', value: 'k_euler_ancestral' },
+                { label: 'Euler', value: 'k_euler' },
+                { label: 'DPM++ 2S Ancestral', value: 'k_dpmpp_2s_ancestral' },
+                { label: 'DPM++ 2M SDE', value: 'k_dpmpp_2m_sde' },
+                { label: 'DPM++ 2M', value: 'k_dpmpp_2m' },
+                { label: 'DPM++ SDE', value: 'k_dpmpp_sde' },
+              ]}
+              showValueTooltips={false}
+              className={selectClass}
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">步数</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={params.novelai_steps}
+              onChange={(e) => setParams({ novelai_steps: Math.min(100, Math.max(1, Number(e.target.value) || 1)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">CFG Scale</span>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={0.5}
+              value={params.novelai_cfg}
+              onChange={(e) => setParams({ novelai_cfg: Math.min(30, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          {isOfficialNovelaiProvider && (
+            <label className="flex flex-col gap-0.5">
+              <span className="text-gray-400 dark:text-gray-500 ml-1">随机种子</span>
+              <input
+                type="number"
+                value={params.novelai_seed ?? ''}
+                placeholder="随机"
+                onChange={(e) => setParams({ novelai_seed: e.target.value.trim() === '' ? null : Number(e.target.value) })}
+                className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+              />
+            </label>
+          )}
+          {isOfficialNovelaiProvider && (
+            <label className="flex flex-col gap-0.5">
+              <span className="text-gray-400 dark:text-gray-500 ml-1">UC 预设</span>
+              <input
+                type="number"
+                min={0}
+                value={params.novelai_uc_preset}
+                onChange={(e) => setParams({ novelai_uc_preset: Math.max(0, Math.trunc(Number(e.target.value) || 0)) })}
+                className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+              />
+            </label>
+          )}
+          {isOfficialNovelaiProvider && (
+            <label className="flex flex-col gap-0.5">
+              <span className="text-gray-400 dark:text-gray-500 ml-1">CFG 重标定</span>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                value={params.novelai_cfg_rescale}
+                onChange={(e) => setParams({ novelai_cfg_rescale: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+                className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+              />
+            </label>
+          )}
+          {isOfficialNovelaiProvider && (
+            <label className="flex flex-col gap-0.5">
+              <span className="text-gray-400 dark:text-gray-500 ml-1">质量增强</span>
+              <Select
+                value={params.novelai_quality_toggle ? 'on' : 'off'}
+                onChange={(val) => setParams({ novelai_quality_toggle: val === 'on' })}
+                options={[{ label: 'true', value: 'on' }, { label: 'false', value: 'off' }]}
+                showValueTooltips={false}
+                className={selectClass}
+              />
+            </label>
+          )}
+        </>
+      )}
       <label
         className="relative flex flex-col gap-0.5"
         onMouseEnter={qualityHint.show}
@@ -227,7 +337,7 @@ export default function InputParamsPanel({
           />
           <ButtonTooltip
             visible={compressionHint.visible}
-            text={isFalProvider ? 'fal.ai 不支持压缩率参数' : '仅 JPEG 和 WebP 支持压缩率'}
+            text={isOfficialNovelaiProvider ? 'NovelAI 官方接口不支持压缩率参数' : isFalProvider ? 'fal.ai 不支持压缩率参数' : '仅 JPEG 和 WebP 支持压缩率'}
           />
         </label>
       )}
@@ -258,7 +368,7 @@ export default function InputParamsPanel({
         />
         <ButtonTooltip
           visible={moderationDisabled && moderationHint.visible}
-          text="fal.ai 不支持审核参数"
+          text={isOfficialNovelaiProvider ? 'NovelAI 官方接口不使用审核参数' : 'fal.ai 不支持审核参数'}
         />
       </label>
       <label
