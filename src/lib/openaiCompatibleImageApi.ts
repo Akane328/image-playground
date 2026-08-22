@@ -833,18 +833,46 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
             input: opts.prompt,
             model: profile.model,
             parameters: {
+              params_version: profile.model.includes('4-5') || profile.model.includes('5-') ? 3 : undefined,
               negative_prompt: opts.params.novelai_negative_prompt,
               width: opts.params.novelai_width,
               height: opts.params.novelai_height,
               steps: opts.params.novelai_steps,
               scale: opts.params.novelai_cfg,
               sampler: opts.params.novelai_sampler,
+              noise_schedule: profile.model.includes('4-5') || profile.model.includes('5-') ? 'karras' : undefined,
               ...(opts.params.novelai_seed == null ? {} : { seed: opts.params.novelai_seed }),
               n_samples: opts.params.n,
               image_format: opts.params.output_format === 'webp' ? 'webp' : 'png',
               qualityToggle: opts.params.novelai_quality_toggle,
               ucPreset: opts.params.novelai_uc_preset,
               cfg_rescale: opts.params.novelai_cfg_rescale,
+              ...(profile.model.includes('4-5') || profile.model.includes('5-')
+                ? {
+                    legacy: false,
+                    legacy_uc: false,
+                    sm: false,
+                    sm_dyn: false,
+                    dynamic_thresholding: false,
+                    deliberate_euler_ancestral_bug: false,
+                    prefer_brownian: true,
+                    v4_prompt: {
+                      caption: {
+                        base_caption: opts.prompt,
+                        char_captions: [],
+                      },
+                      use_coords: false,
+                      use_order: true,
+                    },
+                    v4_negative_prompt: {
+                      caption: {
+                        base_caption: opts.params.novelai_negative_prompt,
+                        char_captions: [],
+                      },
+                      legacy_uc: false,
+                    },
+                  }
+                : {}),
             },
           }
         : resolveTemplateValue(mapping.body ?? {}, context)
@@ -866,6 +894,9 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
 
   if (!response.ok) {
     const errorMessage = await getApiErrorMessage(response)
+    if (profile.provider === 'novelai' && errorMessage === 'Internal Server Error') {
+      throw new Error(`${errorMessage}。NovelAI V4/V4.5 模型需要 v4_prompt/v4_negative_prompt 结构；请确认模型、尺寸、采样器和账号权限。`)
+    }
     throw new Error(maybeAppendStreamingHint(errorMessage, response.status, profile.streamImages))
   }
   return response.json()
