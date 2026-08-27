@@ -1610,7 +1610,8 @@ export default function InputBar() {
           onDownloadSelected={handleDownloadSelected}
           onDeleteSelected={handleDeleteSelected}
         />
-        <div ref={cardRef} className={`max-h-[75vh] overflow-y-auto overscroll-contain rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border border-white/50 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-3 sm:max-h-none sm:overflow-visible sm:p-4 ring-1 ring-black/5 dark:ring-white/10${promptExpanded ? ' flex min-h-0 flex-1 flex-col' : ''}`}>
+        <div className={`w-full min-w-0 overflow-hidden bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border border-white/50 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-2xl sm:rounded-3xl ring-1 ring-black/5 dark:ring-white/10${promptExpanded ? ' flex min-h-0 flex-1 flex-col' : ''}`}>
+          <div ref={cardRef} className={`max-h-[75vh] w-full min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:max-h-none sm:overflow-visible sm:p-4${promptExpanded ? ' flex min-h-0 flex-1 flex-col' : ''}`}>
           {/* 移动端拖动条 */}
           <div
             ref={handleRef}
@@ -1972,6 +1973,7 @@ export default function InputBar() {
             className="hidden"
             onChange={handleFileUpload}
           />
+          </div>
         </div>
       </div>
     </>
