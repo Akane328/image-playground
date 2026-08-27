@@ -1,4 +1,4 @@
-import type { ApiProfile, TaskParams } from '../../types'
+import type { ApiProfile, NovelaiCharacter, TaskParams } from '../../types'
 import { dismissAllTooltips } from '../../lib/tooltipDismiss'
 import Select from '../Select'
 import ButtonTooltip from './buttonTooltip'
@@ -53,6 +53,7 @@ export default function InputParamsPanel({
   sizeHint,
   qualityHint,
   onOpenSizePicker,
+  onSetNovelaiCharacters,
 }: {
   cols: string
   params: TaskParams
@@ -95,6 +96,7 @@ export default function InputParamsPanel({
   sizeHint: HintTooltipState
   qualityHint: HintTooltipState
   onOpenSizePicker: () => void
+  onSetNovelaiCharacters: (characters: NovelaiCharacter[]) => void
 }) {
   return (
     <div className={`grid ${cols} gap-2 text-xs flex-1`}>
@@ -185,6 +187,58 @@ export default function InputParamsPanel({
             />
           </label>
         </>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && (
+        <div className="col-span-full flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="ml-1 text-gray-400 dark:text-gray-500">多角色控制</span>
+            <button
+              type="button"
+              onClick={() => onSetNovelaiCharacters([...params.novelai_characters, { prompt: '', negative_prompt: '', position: 'C3' }])}
+              className="rounded-lg px-2 py-1 text-[11px] text-blue-500 transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/10"
+            >
+              添加角色
+            </button>
+          </div>
+          {params.novelai_characters.map((character, index) => (
+            <div key={`${index}-${character.position}`} className="rounded-xl border border-gray-200/60 bg-white/40 p-2 dark:border-white/[0.08] dark:bg-white/[0.02]">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">角色 {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => onSetNovelaiCharacters(params.novelai_characters.filter((_, itemIndex) => itemIndex !== index))}
+                  className="rounded-lg px-2 py-1 text-[11px] text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+                >
+                  删除
+                </button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_92px]">
+                <textarea
+                  value={character.prompt}
+                  onChange={(e) => onSetNovelaiCharacters(params.novelai_characters.map((item, itemIndex) => itemIndex === index ? { ...item, prompt: e.target.value } : item))}
+                  rows={2}
+                  placeholder="角色正面提示词"
+                  className="min-h-16 resize-y rounded-xl border border-gray-200/60 bg-white/50 px-3 py-2 text-xs leading-5 outline-none focus:ring-1 focus:ring-blue-300/40 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-100"
+                />
+                <textarea
+                  value={character.negative_prompt}
+                  onChange={(e) => onSetNovelaiCharacters(params.novelai_characters.map((item, itemIndex) => itemIndex === index ? { ...item, negative_prompt: e.target.value } : item))}
+                  rows={2}
+                  placeholder="角色负面提示词"
+                  className="min-h-16 resize-y rounded-xl border border-gray-200/60 bg-white/50 px-3 py-2 text-xs leading-5 outline-none focus:ring-1 focus:ring-blue-300/40 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-100"
+                />
+                <Select
+                  value={character.position}
+                  onChange={(value) => onSetNovelaiCharacters(params.novelai_characters.map((item, itemIndex) => itemIndex === index ? { ...item, position: value } : item))}
+                  options={['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5', 'C1', 'C2', 'C3', 'C4', 'C5', 'D1', 'D2', 'D3', 'D4', 'D5', 'E1', 'E2', 'E3', 'E4', 'E5'].map((value) => ({ label: value, value }))}
+                  showValueTooltips={false}
+                  className={selectClass}
+                />
+              </div>
+            </div>
+          ))}
+          {!params.novelai_characters.length && <span className="ml-1 text-[11px] leading-5 text-gray-400 dark:text-gray-500">可为每个角色分别设置正面提示词、负面提示词和 A1 到 E5 的位置。</span>}
+        </div>
       )}
       {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && (
         <label className="col-span-full flex flex-col gap-0.5">

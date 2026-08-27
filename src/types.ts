@@ -156,6 +156,13 @@ export interface TaskParams {
   novelai_character_reference_fidelity: number
   novelai_enable_inline_upscale: boolean
   novelai_upscale_blur_sigma: number
+  novelai_characters: NovelaiCharacter[]
+}
+
+export interface NovelaiCharacter {
+  prompt: string
+  negative_prompt: string
+  position: string
 }
 
 export const DEFAULT_PARAMS: TaskParams = {
@@ -189,6 +196,7 @@ export const DEFAULT_PARAMS: TaskParams = {
   novelai_character_reference_fidelity: 0.6,
   novelai_enable_inline_upscale: false,
   novelai_upscale_blur_sigma: 0.35,
+  novelai_characters: [],
 }
 
 // ===== 输入图片（UI 层面） =====

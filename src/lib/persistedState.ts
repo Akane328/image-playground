@@ -107,6 +107,17 @@ function normalizeParams(value: unknown, fallback: TaskParams): TaskParams {
     novelai_character_reference_fidelity: typeof value.novelai_character_reference_fidelity === 'number' && Number.isFinite(value.novelai_character_reference_fidelity) ? value.novelai_character_reference_fidelity : fallback.novelai_character_reference_fidelity,
     novelai_enable_inline_upscale: typeof value.novelai_enable_inline_upscale === 'boolean' ? value.novelai_enable_inline_upscale : fallback.novelai_enable_inline_upscale,
     novelai_upscale_blur_sigma: typeof value.novelai_upscale_blur_sigma === 'number' && Number.isFinite(value.novelai_upscale_blur_sigma) ? value.novelai_upscale_blur_sigma : fallback.novelai_upscale_blur_sigma,
+    novelai_characters: Array.isArray(value.novelai_characters)
+      ? value.novelai_characters
+        .map((item) => item && typeof item === 'object' ? item as Record<string, unknown> : null)
+        .filter((item): item is Record<string, unknown> => Boolean(item))
+        .map((item) => ({
+          prompt: typeof item.prompt === 'string' ? item.prompt : '',
+          negative_prompt: typeof item.negative_prompt === 'string' ? item.negative_prompt : '',
+          position: typeof item.position === 'string' && /^[A-E][1-5]$/.test(item.position) ? item.position : 'C3',
+        }))
+        .filter((item) => item.prompt.trim() || item.negative_prompt.trim())
+      : fallback.novelai_characters,
   }
 }
 

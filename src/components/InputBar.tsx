@@ -1567,8 +1567,9 @@ export default function InputBar() {
       streamConcurrentHint={streamConcurrentHint}
       sizeHint={sizeHint}
       qualityHint={qualityHint}
-      onOpenSizePicker={() => setShowSizePicker(true)}
-    />
+       onOpenSizePicker={() => setShowSizePicker(true)}
+       onSetNovelaiCharacters={(novelai_characters) => setParams({ novelai_characters })}
+     />
   )
 
   const showFavoriteCollectionBatchBar = inCollectionOverview && selectedFavoriteCollectionIds.length > 0

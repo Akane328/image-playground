@@ -904,19 +904,31 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
               ? {
                   params_version: 3,
                   noise_schedule: 'karras',
-                  v4_prompt: {
-                    caption: {
-                      base_caption: opts.prompt,
-                      char_captions: [],
-                    },
-                    use_coords: false,
-                    use_order: true,
-                  },
-                  v4_negative_prompt: {
-                    caption: {
-                      base_caption: opts.params.novelai_negative_prompt,
-                      char_captions: [],
-                    },
+              v4_prompt: {
+                caption: {
+                  base_caption: opts.prompt,
+                  char_captions: opts.params.novelai_characters.map((character) => ({
+                    centers: [{
+                      x: Math.round((0.5 + 0.2 * ('ABCDE'.indexOf(character.position[0]) - 2)) * 10) / 10,
+                      y: Math.round((0.5 + 0.2 * (Number(character.position[1]) - 3)) * 10) / 10,
+                    }],
+                    char_caption: character.prompt,
+                  })).filter((character) => character.char_caption.trim()),
+                },
+                use_coords: false,
+                use_order: true,
+              },
+              v4_negative_prompt: {
+                caption: {
+                  base_caption: opts.params.novelai_negative_prompt,
+                  char_captions: opts.params.novelai_characters.map((character) => ({
+                    centers: [{
+                      x: Math.round((0.5 + 0.2 * ('ABCDE'.indexOf(character.position[0]) - 2)) * 10) / 10,
+                      y: Math.round((0.5 + 0.2 * (Number(character.position[1]) - 3)) * 10) / 10,
+                    }],
+                    char_caption: character.negative_prompt,
+                  })).filter((character) => character.char_caption.trim()),
+                },
                     legacy_uc: false,
                   },
                 }
