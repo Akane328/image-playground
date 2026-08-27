@@ -313,6 +313,7 @@ export default function InputBar() {
   const textareaRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const imagesRef = useRef<HTMLDivElement>(null)
+  const negativePromptRef = useRef<HTMLTextAreaElement>(null)
   const prevHeightRef = useRef(42)
 
   const [isDragging, setIsDragging] = useState(false)
@@ -430,7 +431,18 @@ export default function InputBar() {
       : normalizeSettings({ ...settings, activeProfileId: activeProfile.id })
   ), [activeProfile.id, settingsActiveProfile.id, settings])
   const hasSubmitApiConfig = Boolean(activeProfile.apiKey)
-  const canSubmit = Boolean(prompt.trim() && hasSubmitApiConfig && !activeAgentIsRunning)
+  const activeProvider = activeProfile.provider
+  const isFalProvider = activeProvider === 'fal'
+  const isNovelaiProvider = activeProvider === 'novelai2oai'
+  const isOfficialNovelaiProvider = activeProvider === 'novelai'
+  const canSubmit = Boolean(
+    prompt.trim()
+      && hasSubmitApiConfig
+      && !activeAgentIsRunning
+      && (!isOfficialNovelaiProvider
+        || params.novelai_generation_mode === 'generate'
+        || (inputImages.length > 0 && (params.novelai_generation_mode !== 'infill' || Boolean(maskDraft)))),
+  )
   const submitButtonAriaLabel = activeAgentIsRunning
     ? '停止生成'
     : hasSubmitApiConfig
@@ -457,10 +469,6 @@ export default function InputBar() {
     syncMentionTagSelection(el)
     setPrompt(getContentEditablePlainText(el))
   }, [setPrompt])
-  const activeProvider = activeProfile.provider
-  const isFalProvider = activeProvider === 'fal'
-  const isNovelaiProvider = activeProvider === 'novelai2oai'
-  const isOfficialNovelaiProvider = activeProvider === 'novelai'
   const agentAutoImageCount = appMode === 'agent'
   const moderationDisabled = isFalProvider || isOfficialNovelaiProvider
   const transparentOutputAvailable = appMode === 'gallery'
@@ -629,6 +637,13 @@ export default function InputBar() {
       params.output_compression == null ? '' : String(params.output_compression),
     )
   }, [params.output_compression])
+
+  useEffect(() => {
+    const el = negativePromptRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${Math.max(36, el.scrollHeight)}px`
+  }, [params.novelai_negative_prompt])
 
   useEffect(() => {
     setNInput(agentAutoImageCount ? 'auto' : String(params.n))
@@ -1595,7 +1610,7 @@ export default function InputBar() {
           onDownloadSelected={handleDownloadSelected}
           onDeleteSelected={handleDeleteSelected}
         />
-        <div ref={cardRef} className={`bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border border-white/50 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-2xl sm:rounded-3xl p-3 sm:p-4 ring-1 ring-black/5 dark:ring-white/10${promptExpanded ? ' flex min-h-0 flex-1 flex-col' : ''}`}>
+        <div ref={cardRef} className={`max-h-[75vh] overflow-y-auto overscroll-contain bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border border-white/50 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-2xl sm:rounded-3xl p-3 sm:max-h-none sm:overflow-visible sm:p-4 ring-1 ring-black/5 dark:ring-white/10${promptExpanded ? ' flex min-h-0 flex-1 flex-col' : ''}`}>
           {/* 移动端拖动条 */}
           <div
             ref={handleRef}
@@ -1759,6 +1774,19 @@ export default function InputBar() {
               </div>
             )}
           </div>
+
+          {(isNovelaiProvider || isOfficialNovelaiProvider) && (
+            <label className="mt-2 flex w-full flex-col gap-0.5">
+              <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">负面提示词</span>
+              <textarea
+                ref={negativePromptRef}
+                value={params.novelai_negative_prompt}
+                onChange={(e) => setParams({ novelai_negative_prompt: e.target.value })}
+                placeholder="输入负面提示词"
+                className="box-border min-h-9 w-full resize-none overflow-hidden rounded-xl border border-gray-200/60 bg-white/50 px-3 py-2 text-xs leading-5 shadow-sm outline-none transition-[height,border-color,box-shadow] duration-200 focus:ring-1 focus:ring-blue-300/40 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-100 dark:focus:ring-blue-500/30 sm:min-h-[42px] sm:rounded-2xl sm:pl-4 sm:pr-10 sm:py-3 sm:text-sm sm:leading-relaxed dark:sm:focus:ring-blue-500/30"
+              />
+            </label>
+          )}
 
           {/* 参数 + 按钮 */}
           <div className="mt-3">

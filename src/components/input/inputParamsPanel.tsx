@@ -122,15 +122,187 @@ export default function InputParamsPanel({
             : 'Codex CLI 不支持尺寸参数，此处设置仅基于提示词工程'}
         />
       </label>
-      {(isNovelaiProvider || isOfficialNovelaiProvider) && (
+      {isOfficialNovelaiProvider && (
         <label className="col-span-full flex flex-col gap-0.5">
-          <span className="text-gray-400 dark:text-gray-500 ml-1">负面提示词</span>
-          <textarea
-            value={params.novelai_negative_prompt}
-            onChange={(e) => setParams({ novelai_negative_prompt: e.target.value })}
-            rows={2}
-            placeholder="输入不希望出现的内容，例如 low quality, blurry"
-            className="min-h-16 resize-y px-3 py-2 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+          <span className="text-gray-400 dark:text-gray-500 ml-1">生成模式</span>
+          <Select
+            value={params.novelai_generation_mode}
+            onChange={(val) => setParams({
+              novelai_generation_mode: val as TaskParams['novelai_generation_mode'],
+              ...(val !== 'generate'
+                ? { novelai_enable_reference: false, novelai_enable_character_reference: false, novelai_enable_inline_upscale: false }
+                : {}),
+            })}
+            options={[
+              { label: '文生图', value: 'generate' },
+              { label: '图生图', value: 'img2img' },
+              { label: '局部重绘', value: 'infill' },
+            ]}
+            showValueTooltips={false}
+            className={selectClass}
+          />
+          {params.novelai_generation_mode !== 'generate' && (
+            <span className="mt-1 text-[11px] leading-5 text-gray-400 dark:text-gray-500">
+              {params.novelai_generation_mode === 'infill' ? '请先上传参考图并创建遮罩' : '请先上传参考图'}
+            </span>
+          )}
+        </label>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode !== 'generate' && (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">图像强度</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_img2img_strength}
+              onChange={(e) => setParams({ novelai_img2img_strength: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">图像噪声</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_img2img_noise}
+              onChange={(e) => setParams({ novelai_img2img_noise: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">颜色校正</span>
+            <Select
+              value={params.novelai_img2img_color_correct ? 'on' : 'off'}
+              onChange={(val) => setParams({ novelai_img2img_color_correct: val === 'on' })}
+              options={[{ label: 'true', value: 'on' }, { label: 'false', value: 'off' }]}
+              showValueTooltips={false}
+              className={selectClass}
+            />
+          </label>
+        </>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && (
+        <label className="col-span-full flex flex-col gap-0.5">
+          <span className="text-gray-400 dark:text-gray-500 ml-1">参考模式</span>
+          <div className="grid grid-cols-3 gap-1 rounded-2xl border border-gray-200/60 bg-white/50 p-1 dark:border-white/[0.08] dark:bg-white/[0.03]">
+            {[
+              { label: '关闭', value: 'off' },
+              { label: 'Vibe Transfer', value: 'vibe' },
+              { label: 'Precise Reference', value: 'precise' },
+            ].map((option) => {
+              const checked = option.value === 'vibe' ? params.novelai_enable_reference : option.value === 'precise' ? params.novelai_enable_character_reference : !params.novelai_enable_reference && !params.novelai_enable_character_reference
+              return (
+                <label key={option.value} className={`flex cursor-pointer items-center justify-center rounded-xl px-2 py-2 text-center text-[11px] transition-colors ${checked ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/[0.06]'}`}>
+                  <input
+                    type="radio"
+                    name="novelai-reference-mode"
+                    value={option.value}
+                    checked={checked}
+                    onChange={() => setParams({ novelai_enable_reference: option.value === 'vibe', novelai_enable_character_reference: option.value === 'precise' })}
+                    className="sr-only"
+                  />
+                  {option.label}
+                </label>
+              )
+            })}
+          </div>
+          {params.novelai_enable_reference && <span className="mt-1 text-[11px] leading-5 text-gray-400 dark:text-gray-500">先编码当前已上传图片，再将视觉氛围用于生成，支持单图或多图。</span>}
+        </label>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && params.novelai_enable_reference && (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">参考信息提取</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_reference_information_extracted}
+              onChange={(e) => setParams({ novelai_reference_information_extracted: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">参考强度</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_reference_strength}
+              onChange={(e) => setParams({ novelai_reference_strength: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+        </>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && params.novelai_enable_character_reference && (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">角色信息提取</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_character_reference_information_extracted}
+              onChange={(e) => setParams({ novelai_character_reference_information_extracted: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">角色参考强度</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_character_reference_strength}
+              onChange={(e) => setParams({ novelai_character_reference_strength: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-gray-400 dark:text-gray-500 ml-1">角色 Fidelity</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={params.novelai_character_reference_fidelity}
+              onChange={(e) => setParams({ novelai_character_reference_fidelity: Math.min(1, Math.max(0, Number(e.target.value) || 0)) })}
+              className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] focus:outline-none text-xs transition-all duration-200 shadow-sm"
+            />
+          </label>
+        </>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_enable_inline_upscale && (
+        <label className="flex flex-col gap-0.5">
+          <span className="text-gray-400 dark:text-gray-500 ml-1">放大模糊参数</span>
+          <Select
+            value={String(params.novelai_upscale_blur_sigma)}
+            onChange={(val) => setParams({ novelai_upscale_blur_sigma: Number(val) })}
+            options={['0', '0.3', '0.35', '0.4', '0.45', '0.5'].map((value) => ({ label: value, value }))}
+            showValueTooltips={false}
+            className={selectClass}
+          />
+        </label>
+      )}
+      {isOfficialNovelaiProvider && params.novelai_generation_mode === 'generate' && (
+        <label className="col-span-full flex flex-col gap-0.5">
+          <span className="text-gray-400 dark:text-gray-500 ml-1">生成后放大增强</span>
+          <Select
+            value={params.novelai_enable_inline_upscale ? 'on' : 'off'}
+            onChange={(val) => setParams({ novelai_enable_inline_upscale: val === 'on' })}
+            options={[{ label: '关闭', value: 'off' }, { label: '开启', value: 'on' }]}
+            showValueTooltips={false}
+            className={selectClass}
           />
         </label>
       )}

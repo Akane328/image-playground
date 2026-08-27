@@ -143,6 +143,19 @@ export interface TaskParams {
   novelai_uc_preset: number
   novelai_cfg_rescale: number
   novelai_quality_toggle: boolean
+  novelai_generation_mode: 'generate' | 'img2img' | 'infill'
+  novelai_img2img_strength: number
+  novelai_img2img_noise: number
+  novelai_img2img_color_correct: boolean
+  novelai_enable_reference: boolean
+  novelai_reference_information_extracted: number
+  novelai_reference_strength: number
+  novelai_enable_character_reference: boolean
+  novelai_character_reference_information_extracted: number
+  novelai_character_reference_strength: number
+  novelai_character_reference_fidelity: number
+  novelai_enable_inline_upscale: boolean
+  novelai_upscale_blur_sigma: number
 }
 
 export const DEFAULT_PARAMS: TaskParams = {
@@ -163,6 +176,19 @@ export const DEFAULT_PARAMS: TaskParams = {
   novelai_uc_preset: 0,
   novelai_cfg_rescale: 0,
   novelai_quality_toggle: true,
+  novelai_generation_mode: 'generate',
+  novelai_img2img_strength: 0.7,
+  novelai_img2img_noise: 0,
+  novelai_img2img_color_correct: true,
+  novelai_enable_reference: false,
+  novelai_reference_information_extracted: 0.8,
+  novelai_reference_strength: 0.6,
+  novelai_enable_character_reference: false,
+  novelai_character_reference_information_extracted: 0.8,
+  novelai_character_reference_strength: 0.6,
+  novelai_character_reference_fidelity: 0.6,
+  novelai_enable_inline_upscale: false,
+  novelai_upscale_blur_sigma: 0.35,
 }
 
 // ===== 输入图片（UI 层面） =====

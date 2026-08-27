@@ -94,6 +94,19 @@ function normalizeParams(value: unknown, fallback: TaskParams): TaskParams {
     novelai_uc_preset: typeof value.novelai_uc_preset === 'number' && Number.isInteger(value.novelai_uc_preset) ? value.novelai_uc_preset : fallback.novelai_uc_preset,
     novelai_cfg_rescale: typeof value.novelai_cfg_rescale === 'number' && Number.isFinite(value.novelai_cfg_rescale) ? value.novelai_cfg_rescale : fallback.novelai_cfg_rescale,
     novelai_quality_toggle: typeof value.novelai_quality_toggle === 'boolean' ? value.novelai_quality_toggle : fallback.novelai_quality_toggle,
+    novelai_generation_mode: value.novelai_generation_mode === 'img2img' || value.novelai_generation_mode === 'infill' ? value.novelai_generation_mode : fallback.novelai_generation_mode,
+    novelai_img2img_strength: typeof value.novelai_img2img_strength === 'number' && Number.isFinite(value.novelai_img2img_strength) ? value.novelai_img2img_strength : fallback.novelai_img2img_strength,
+    novelai_img2img_noise: typeof value.novelai_img2img_noise === 'number' && Number.isFinite(value.novelai_img2img_noise) ? value.novelai_img2img_noise : fallback.novelai_img2img_noise,
+    novelai_img2img_color_correct: typeof value.novelai_img2img_color_correct === 'boolean' ? value.novelai_img2img_color_correct : fallback.novelai_img2img_color_correct,
+    novelai_enable_reference: typeof value.novelai_enable_reference === 'boolean' ? value.novelai_enable_reference : fallback.novelai_enable_reference,
+    novelai_reference_information_extracted: typeof value.novelai_reference_information_extracted === 'number' && Number.isFinite(value.novelai_reference_information_extracted) ? value.novelai_reference_information_extracted : fallback.novelai_reference_information_extracted,
+    novelai_reference_strength: typeof value.novelai_reference_strength === 'number' && Number.isFinite(value.novelai_reference_strength) ? value.novelai_reference_strength : fallback.novelai_reference_strength,
+    novelai_enable_character_reference: typeof value.novelai_enable_character_reference === 'boolean' ? value.novelai_enable_character_reference : fallback.novelai_enable_character_reference,
+    novelai_character_reference_information_extracted: typeof value.novelai_character_reference_information_extracted === 'number' && Number.isFinite(value.novelai_character_reference_information_extracted) ? value.novelai_character_reference_information_extracted : fallback.novelai_character_reference_information_extracted,
+    novelai_character_reference_strength: typeof value.novelai_character_reference_strength === 'number' && Number.isFinite(value.novelai_character_reference_strength) ? value.novelai_character_reference_strength : fallback.novelai_character_reference_strength,
+    novelai_character_reference_fidelity: typeof value.novelai_character_reference_fidelity === 'number' && Number.isFinite(value.novelai_character_reference_fidelity) ? value.novelai_character_reference_fidelity : fallback.novelai_character_reference_fidelity,
+    novelai_enable_inline_upscale: typeof value.novelai_enable_inline_upscale === 'boolean' ? value.novelai_enable_inline_upscale : fallback.novelai_enable_inline_upscale,
+    novelai_upscale_blur_sigma: typeof value.novelai_upscale_blur_sigma === 'number' && Number.isFinite(value.novelai_upscale_blur_sigma) ? value.novelai_upscale_blur_sigma : fallback.novelai_upscale_blur_sigma,
   }
 }
 

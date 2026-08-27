@@ -104,6 +104,51 @@ function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
+function toNovelaiBase64(dataUrl: string): string {
+  return dataUrl.replace(/^data:[^;]+;base64,/, '')
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize))
+  }
+  return btoa(binary)
+}
+
+async function encodeNovelaiVibe(
+  profile: ApiProfile,
+  dataUrl: string,
+  informationExtracted: number,
+  controller: AbortController,
+  proxyConfig: ReturnType<typeof readClientDevProxyConfig>,
+  useApiProxy: boolean,
+): Promise<string> {
+  const response = await fetch(buildApiUrl(profile.baseUrl, 'ai/encode-vibe', proxyConfig, useApiProxy), {
+    method: 'POST',
+    headers: {
+      ...createRequestHeaders(profile),
+      'Content-Type': 'application/json',
+      Accept: 'application/binary',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      image: toNovelaiBase64(dataUrl),
+      model: profile.model,
+      informationExtracted,
+    }),
+    signal: controller.signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(await getApiErrorMessage(response))
+  }
+
+  return arrayBufferToBase64(await response.arrayBuffer())
+}
+
 function getNumberValue(source: Record<string, unknown>, key: string): number | undefined {
   const value = source[key]
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
@@ -827,53 +872,135 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
           (opts.maskDataUrl ? getDataUrlEncodedByteSize(opts.maskDataUrl) : 0),
       )
       headers['Content-Type'] = 'application/json'
+      const novelaiVibeImages = profile.provider === 'novelai' && opts.params.novelai_generation_mode === 'generate' && opts.params.novelai_enable_reference
+        ? await Promise.all(opts.inputImageDataUrls.map((dataUrl) => encodeNovelaiVibe(
+            profile,
+            dataUrl,
+            opts.params.novelai_reference_information_extracted,
+            controller,
+            proxyConfig,
+            useApiProxy,
+          )))
+        : []
+      const novelaiGenerationMode = opts.params.novelai_generation_mode
+      const novelaiBaseParameters = {
+        negative_prompt: opts.params.novelai_negative_prompt,
+        width: opts.params.novelai_width,
+        height: opts.params.novelai_height,
+        steps: opts.params.novelai_steps,
+        scale: opts.params.novelai_cfg,
+        sampler: opts.params.novelai_sampler,
+        ...(opts.params.novelai_seed == null ? {} : { seed: opts.params.novelai_seed }),
+        n_samples: opts.params.n,
+        image_format: opts.params.output_format === 'webp' ? 'webp' : 'png',
+      }
+      const novelaiParameters = novelaiGenerationMode === 'img2img'
+        ? {
+            ...novelaiBaseParameters,
+            image: opts.inputImageDataUrls[0] ? toNovelaiBase64(opts.inputImageDataUrls[0]) : undefined,
+            strength: opts.params.novelai_img2img_strength,
+            noise: opts.params.novelai_img2img_noise,
+            ...(profile.model.includes('4-5') || profile.model.includes('5-')
+              ? {
+                  params_version: 3,
+                  noise_schedule: 'karras',
+                  v4_prompt: {
+                    caption: {
+                      base_caption: opts.prompt,
+                      char_captions: [],
+                    },
+                    use_coords: false,
+                    use_order: true,
+                  },
+                  v4_negative_prompt: {
+                    caption: {
+                      base_caption: opts.params.novelai_negative_prompt,
+                      char_captions: [],
+                    },
+                    legacy_uc: false,
+                  },
+                }
+              : {}),
+          }
+        : novelaiGenerationMode === 'infill'
+        ? {
+            ...novelaiBaseParameters,
+            image: opts.inputImageDataUrls[0] ? toNovelaiBase64(opts.inputImageDataUrls[0]) : undefined,
+            mask: opts.maskDataUrl ? toNovelaiBase64(opts.maskDataUrl) : undefined,
+          }
+        : {
+            ...novelaiBaseParameters,
+            qualityToggle: opts.params.novelai_quality_toggle,
+            ucPreset: opts.params.novelai_uc_preset,
+            cfg_rescale: opts.params.novelai_cfg_rescale,
+            ...(profile.model.includes('4-5') || profile.model.includes('5-')
+              ? {
+                  params_version: 3,
+                  noise_schedule: 'karras',
+                  legacy: false,
+                  legacy_uc: false,
+                  sm: false,
+                  sm_dyn: false,
+                  dynamic_thresholding: false,
+                  deliberate_euler_ancestral_bug: false,
+                  prefer_brownian: true,
+                  v4_prompt: {
+                    caption: {
+                      base_caption: opts.prompt,
+                      char_captions: [],
+                    },
+                    use_coords: false,
+                    use_order: true,
+                  },
+                  v4_negative_prompt: {
+                    caption: {
+                      base_caption: opts.params.novelai_negative_prompt,
+                      char_captions: [],
+                    },
+                    legacy_uc: false,
+                  },
+                }
+              : {}),
+            ...(novelaiVibeImages.length > 0
+              ? {
+                  reference_image: novelaiVibeImages[0],
+                  reference_information_extracted: opts.params.novelai_reference_information_extracted,
+                  reference_strength: opts.params.novelai_reference_strength,
+                  ...(novelaiVibeImages.length > 1
+                    ? {
+                        reference_image_multiple: novelaiVibeImages,
+                        reference_information_extracted_multiple: novelaiVibeImages.map(() => opts.params.novelai_reference_information_extracted),
+                        reference_strength_multiple: novelaiVibeImages.map(() => opts.params.novelai_reference_strength),
+                      }
+                    : {}),
+                }
+              : {}),
+            ...(opts.params.novelai_enable_character_reference && opts.inputImageDataUrls.length > 0
+              ? {
+                  director_reference_images: opts.inputImageDataUrls.map(toNovelaiBase64),
+                  director_reference_descriptions: opts.inputImageDataUrls.map(() => ({
+                    caption: { base_caption: 'character', char_captions: [] },
+                    use_coords: false,
+                    use_order: true,
+                  })),
+                  director_reference_information_extracted: opts.inputImageDataUrls.map(() => opts.params.novelai_character_reference_information_extracted),
+                  director_reference_strength_values: opts.inputImageDataUrls.map(() => opts.params.novelai_character_reference_strength),
+                  director_reference_secondary_strength_values: opts.inputImageDataUrls.map(() => opts.params.novelai_character_reference_fidelity),
+                }
+              : {}),
+            ...(opts.params.novelai_enable_inline_upscale
+              ? {
+                  upscale: { declared_blur_sigma: opts.params.novelai_upscale_blur_sigma },
+                  upscaled_enhance: true,
+                }
+              : {}),
+          }
       const resolved = profile.provider === 'novelai'
         ? {
-            action: 'generate',
+            action: novelaiGenerationMode,
             input: opts.prompt,
             model: profile.model,
-            parameters: {
-              params_version: profile.model.includes('4-5') || profile.model.includes('5-') ? 3 : undefined,
-              negative_prompt: opts.params.novelai_negative_prompt,
-              width: opts.params.novelai_width,
-              height: opts.params.novelai_height,
-              steps: opts.params.novelai_steps,
-              scale: opts.params.novelai_cfg,
-              sampler: opts.params.novelai_sampler,
-              noise_schedule: profile.model.includes('4-5') || profile.model.includes('5-') ? 'karras' : undefined,
-              ...(opts.params.novelai_seed == null ? {} : { seed: opts.params.novelai_seed }),
-              n_samples: opts.params.n,
-              image_format: opts.params.output_format === 'webp' ? 'webp' : 'png',
-              qualityToggle: opts.params.novelai_quality_toggle,
-              ucPreset: opts.params.novelai_uc_preset,
-              cfg_rescale: opts.params.novelai_cfg_rescale,
-              ...(profile.model.includes('4-5') || profile.model.includes('5-')
-                ? {
-                    legacy: false,
-                    legacy_uc: false,
-                    sm: false,
-                    sm_dyn: false,
-                    dynamic_thresholding: false,
-                    deliberate_euler_ancestral_bug: false,
-                    prefer_brownian: true,
-                    v4_prompt: {
-                      caption: {
-                        base_caption: opts.prompt,
-                        char_captions: [],
-                      },
-                      use_coords: false,
-                      use_order: true,
-                    },
-                    v4_negative_prompt: {
-                      caption: {
-                        base_caption: opts.params.novelai_negative_prompt,
-                        char_captions: [],
-                      },
-                      legacy_uc: false,
-                    },
-                  }
-                : {}),
-            },
+            parameters: novelaiParameters,
           }
         : resolveTemplateValue(mapping.body ?? {}, context)
       if (profile.provider === 'novelai') headers.Accept = 'application/json'
@@ -895,7 +1022,9 @@ async function submitCustomRequest(mapping: CustomProviderSubmitMapping, opts: C
   if (!response.ok) {
     const errorMessage = await getApiErrorMessage(response)
     if (profile.provider === 'novelai' && errorMessage === 'Internal Server Error') {
-      throw new Error(`${errorMessage}。NovelAI V4/V4.5 模型需要 v4_prompt/v4_negative_prompt 结构；请确认模型、尺寸、采样器和账号权限。`)
+      throw new Error(opts.params.novelai_generation_mode === 'img2img'
+        ? `${errorMessage}。请确认图生图模型支持图片输入，并检查 image、strength、noise 与 V4 提示词结构。`
+        : `${errorMessage}。请确认 NovelAI 模型、尺寸、采样器和账号权限。`)
     }
     throw new Error(maybeAppendStreamingHint(errorMessage, response.status, profile.streamImages))
   }
